@@ -1,0 +1,43 @@
+## Encoder: 
+
+- Input Embedding: 
+    - Tokenize the input sentence 
+    - Give each word a input ID (a number based on its place in our "vocabulary/dataset")
+    - Give each input ID a 512x1 vector embedding. Our model will learn to change the embedding as the model trains and our loss function is minimized
+        - d_model: size of vector embedding for each word (512)
+
+- Positional Encoding: Represent a pattern for the model to understand how "close" and "far" certain words are from each other
+    - For each input embedding, create a position embedding vector (512x1) and add the two vectors together, giving us our encoder input
+    - Calculating PE: 
+        - Even positions: PE(pos, 2i) = sin(pos/10000 ^ (2i/d_model))
+        - Odd positions: PE(pos, 2i+1) = cos(pos/10000 ^ (2i/d_model)) 
+        ex: first word would be (PE(0,0), PE(0,1), ...), using (sin, cos, sin, cos, ...)
+        - Positional encoding is NOT trained, it is computed once and used for every sentence 
+
+- Self-Attention: Allows model to relate words to each other
+    - Let seq_len = 6, d_model = d_k = 512, 
+        - Q = K  = input matrix(seq_len x d_k). Each row is the vector embedding of each input token
+        - output = softmax (QK^T / sqrt(d_k)) (seq_len x seq_len) 
+        - output(i,j) represents the strength of relationship between word i and word j in the input sentence
+        - Attention(Q, K, V) = output * V (seq_len x d_k) -> each row is a vector embedding of word i's relationship with the rest of the words
+    - Note that we expect words along the diagonal to be the highest (word i's relation to itself) 
+    - If we don't want words to have a relation, set their output ixj to -infinity and softmax will make it 0 (used in decoder)
+
+- Multi-head Attention: split Q, K, V into smaller matrices (heads) and calculate the attention of each head
+    - Let seq = seq length, d_model=512, h=num_heads, dk = dv = d_model/h
+    - Create matrices Q, K, V which are the same as the input encoder matrix (seq, d_model) 
+        - These are the query, key and value matrice
+    - Multiply each matrix by W^Q, W^K, W^V, (d_model x d_model) to get Q', K', V' (seq, d_model)
+    - Split Q', K', V' into smaller matrices along columns, each (seq x d_k) in size    
+        - Allows our model to see the full sentence, but a smaller part of the encoding (a different aspect of the embedding of the word)
+            - Our model can have each head to monitor different aspects of the same word (and how it is relevant to this sentence)
+        - This gives Q1...Qh, K1...Kh, V1...Vh
+    - We calculate each head's matrix as Attention(Qi, Ki, Vi) = Attention(Q*W_i^Q, K*W_i^K, V*W_i^V), each of size (d_v x seq)
+    - Concatenate these head matrices along d_v to get matrix H (seq x h*d_v)
+    - We then multiple H by W^O (h*d_v, d_model) to get our Multihead Attention (seq, d_model)
+
+Layer Normalization: 
+    - For each token's embedding, calculate the mean and variance. Use some small value epsilon to avoid division by 0
+    - Normalize each vector -> x_ihat = (x_i - mu_i) / sqrt(variance_i + epsilon)
+    - Ensure all values are between 0 and 1
+    

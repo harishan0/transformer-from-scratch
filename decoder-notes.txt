@@ -1,0 +1,41 @@
+## Decoder: 
+
+We want our model to be casual, meaning that the output at a certain position can only depend on words in previous positions. We do 
+not want our model to see future words. 
+
+Masked Multihead Attention: Ensure that our model cannot determine relationship between current words and future words
+- Want to replace all attentions of words after our current word with -infinity before softmax(any value above our diagonal)
+- Our model then learns to not make the words interact with each other
+
+Training: 
+1. Surround input sentence with <SOS> and <EOS> tokens, send through input and position embeddings to get our encoder input
+2. Send encoder input through encoder to get encoder output (seq x d_model) -> embedding captures meaning of word and also its relation/interaction to other words (multi-head attention)
+3. Prepare output for decoder by prepending the output with a <SOS> 
+    - Best practice to ensure both input and output are of the same length, so use padding tokens for Normalization
+4. Embed output the same way we did for input to achieve our decoder input (seq x d_model)
+5. Send decoder input through masked multi-head attention, add + normalize 
+6. Take keys + vals from encoder output and queries from masked MHA output and send through multi-head attention
+7. Add and normalize, use a feed forward layer, then add and normalize. This gives us our decoder output (seq x d_model)
+8. Put decoder output into a linear layer. This output is (seq x vocab_size)
+9. Apply softmax to get our prediction and compare with our target/label value. 
+10. Use Cross Entropy Loss and backpropagate to adjust all weights in our transformer model
+
+Inference: 
+
+Time step 1: 
+1. Surround input sentence with <SOS> and <EOS> tokens, send through input and position embeddings to get our encoder input
+2. Send encoder input through encoder to get encoder output (seq x d_model) -> embedding captures meaning of word and also its relation/interaction to other words (multi-head attention)
+3. Prepare output for decoder by prepending the output with a <SOS> 
+    - Best practice to ensure both input and output are of the same length, so use padding tokens for Normalization
+4. Embed output the same way we did for input to achieve our decoder input (seq x d_model)
+5. Send <SOS> token through decoder (will be padded so both sequences are of same length)
+6. Same process, send through linear layer, which gives us our logits
+7. Send logits through Softmax, giving us probabilities for which word in the vocabulary we should be using 
+- Take the row corresponding to 1st token, take the maximum value. This corresponds to the new word in our vocabulary
+
+Time Step i > 1: 
+1. Use the encoder output from the previous time step and the transformer output from previous sentence as decoder input
+2. Put decoder input and previous encoder output through decoder, get new decoder output
+3. Reproject this decoder output into new vocabulary (through linear and softmax layer)
+4. Since decoder input now gives i tokens, check the ith row in softmax output
+5. Repeat until we encountere <EOS> token
