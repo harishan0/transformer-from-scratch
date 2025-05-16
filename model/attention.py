@@ -6,7 +6,7 @@ def scaled_dot_product_attention(Q, K, V, mask):
     d_k = Q.size(-1)
     scores = torch.matmul(Q, K.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=Q.dtype, device=Q.device)) # seq_len x seq_len
     if mask is not None: 
-        scores = scores.masked_fill(mask == 0, float('--inf'))
+        scores = scores.masked_fill(mask == 0, float('-1e20'))
 
     attn = torch.nn.functional.softmax(scores, dim=-1)
     # Each row is a vector embedding of word i's relationship w rest of sentence
